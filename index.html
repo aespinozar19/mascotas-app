@@ -25,9 +25,12 @@
 
   * { box-sizing: border-box; }
 
+  html { -webkit-text-size-adjust: 100%; }
+
   body {
     margin: 0;
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--bg);
     background-image: radial-gradient(circle at 12% 18%, rgba(47,111,98,0.06) 0, transparent 45%),
                        radial-gradient(circle at 88% 82%, rgba(47,111,98,0.05) 0, transparent 40%);
@@ -160,6 +163,14 @@
     margin-top: 14px;
     display: none;
   }
+
+  /* ===== Responsive: mobile ===== */
+  @media (max-width: 400px) {
+    body { padding: 14px; }
+    .card { padding: 30px 20px 24px; border-radius: 16px; }
+    h1 { font-size: 22px; }
+    p.sub { font-size: 14px; margin-bottom: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -218,7 +229,6 @@
 
 <script>
   // ===================== CONFIG =====================
-  // Reemplaza estos dos valores con los tuyos.
   const GOOGLE_CLIENT_ID = '891168012188-rlv06omnpf60gus1j69v582emeq109pp.apps.googleusercontent.com';
   const API_URL = 'https://script.google.com/macros/s/AKfycbxCLdntDxCPLNKEUpij7aIG7OZK3UnAnsCV1FR0Uq-CbO3j1ms0zMEHJeQwBeteRfKu4g/exec';
   // ====================================================
@@ -244,12 +254,18 @@
       client_id: GOOGLE_CLIENT_ID,
       callback: manejarRespuestaGoogle
     });
+
+    // Ancho del botón responsive: se ajusta al espacio real disponible en el card,
+    // en vez de un ancho fijo que se desborda en pantallas angostas.
+    const contenedor = document.getElementById('g_id_signin_container');
+    const anchoDisponible = contenedor.getBoundingClientRect().width;
+    const anchoBoton = Math.max(200, Math.min(340, Math.floor(anchoDisponible)));
+
     google.accounts.id.renderButton(
-      document.getElementById('g_id_signin_container'),
-      { theme: 'outline', size: 'large', width: 300, text: 'continue_with' }
+      contenedor,
+      { theme: 'outline', size: 'large', width: anchoBoton, text: 'continue_with' }
     );
 
-    // Si ya hay sesión guardada, intenta continuar directo
     const idTokenGuardado = localStorage.getItem('idToken');
     if (idTokenGuardado) {
       procesarLogin(idTokenGuardado);
@@ -257,7 +273,6 @@
   };
 
   function manejarRespuestaGoogle(respuesta) {
-    // respuesta.credential es el idToken de Google
     localStorage.setItem('idToken', respuesta.credential);
     procesarLogin(respuesta.credential);
   }
@@ -290,7 +305,6 @@
           document.getElementById('bienvenida-nombre').textContent = 'Hola, ' + (usuario.nombre || '') + '';
           mostrarVista('bienvenida');
           setTimeout(() => {
-            // Redirige según el rol
             window.location.href = usuario.rol === 'admin' ? 'admin.html' : 'app.html';
           }, 900);
         }
