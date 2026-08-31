@@ -472,7 +472,7 @@
       const fila = document.createElement('div');
       fila.className = 'fila-evento';
       fila.style.cursor = 'pointer';
-      const desc = ev.descripcion || ev.campo_extra_1 || '';
+      const desc = [ev.campo_extra_1, ev.descripcion].filter(Boolean).join(' · ');
       const esElMasReciente = masRecientePorTipo[ev.tipo_evento] && masRecientePorTipo[ev.tipo_evento].id_evento === ev.id_evento;
 
       let badge = '';
