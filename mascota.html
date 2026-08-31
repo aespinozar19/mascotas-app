@@ -67,10 +67,20 @@
     font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--border);
     border-radius: 8px; background: #fff; color: var(--ink);
   }
+  .filtros input[type="text"] { flex: 1; min-width: 140px; }
   .filtros .btn-limpiar {
     margin-left: auto; font-family: inherit; font-size: 13px; color: var(--ink-muted);
     background: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer;
   }
+  .filtros .btn-limpiar.activo {
+    color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 500;
+  }
+
+  .badge-alerta {
+    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+  }
+  .badge-alerta.vencido { background: var(--danger-bg); color: var(--danger); }
+  .badge-alerta.por-vencer { background: var(--warn-bg); color: var(--warn-ink); }
 
   .btn-agregar-flotante {
     display: flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; font-weight: 500;
@@ -121,6 +131,11 @@
   button.secundario:hover { background: #F4F6F3; }
   #campos-dinamicos .campo { animation: fade .15s ease; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .detalle-fila { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .detalle-fila:last-child { border-bottom: none; }
+  .detalle-fila .etiqueta { color: var(--ink-muted); flex-shrink: 0; }
+  .detalle-fila .valor { text-align: right; font-weight: 500; }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -187,9 +202,8 @@
 
     <div class="filtros">
       <select id="f-tipo"><option value="">Todos los tipos</option></select>
-      <input type="date" id="f-desde">
-      <input type="date" id="f-hasta">
-      <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
+      <input type="text" id="f-buscar" placeholder="Buscar en la descripción...">
+      <button class="btn-limpiar" id="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar</button>
     </div>
 
     <div id="lista-historial" class="carga">Cargando...</div>
@@ -232,8 +246,9 @@
     <div id="campos-dinamicos"></div>
 
     <div class="campo">
-      <label>¿Se repite? Cada cuántos días (opcional)</label>
-      <input type="number" id="ev-periodicidad" placeholder="Ej. 90 para antipulgas trimestral">
+      <label>¿Quieres que te avise cuando toque repetirlo? Cada cuántos días</label>
+      <input type="number" id="ev-periodicidad" placeholder="Ej. 90 para antipulgas trimestral, 365 para vacuna anual">
+      <p class="error-campo" style="display:block;color:var(--ink-muted);">Este es el único campo que activa la alerta — los campos de arriba son solo informativos.</p>
     </div>
 
     <div class="modal-acciones">
@@ -269,6 +284,17 @@
     <div class="modal-acciones">
       <button class="secundario" onclick="cerrarModalAlimento()">Cancelar</button>
       <button class="primario" id="btn-guardar-alimento" onclick="guardarAlimento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DETALLE DE EVENTO -->
+<div class="modal-fondo" id="modal-detalle">
+  <div class="modal-box">
+    <h2 id="detalle-titulo">Detalle del evento</h2>
+    <div id="detalle-contenido"></div>
+    <div class="modal-acciones">
+      <button class="secundario" onclick="cerrarModalDetalle()" style="flex:none; width:100%;">Cerrar</button>
     </div>
   </div>
 </div>
@@ -346,7 +372,9 @@
     document.getElementById('m-nombre-titulo').textContent = m.nombre;
     const partes = [nombreParam(m.tipo)];
     if (m.raza) partes.push(m.raza);
-    if (m.peso_actual) partes.push(m.peso_actual + ' kg');
+    if (m.sexo) partes.push(nombreParam(m.sexo));
+    if (m.peso_actual && !isNaN(parseFloat(m.peso_actual))) partes.push(parseFloat(m.peso_actual) + ' kg');
+    if (m.fecha_nacimiento) partes.push('Nació el ' + formatearFecha(m.fecha_nacimiento));
     document.getElementById('m-detalle-sub').textContent = partes.join(' · ');
   }
 
@@ -358,6 +386,8 @@
   }
 
   // ===== HISTORIAL =====
+  let historialCompleto = [];
+
   function poblarSelectsFiltro() {
     const sel = document.getElementById('f-tipo');
     tiposEvento.forEach(t => {
@@ -365,41 +395,98 @@
       op.value = t.id_parametro; op.textContent = t.nombre;
       sel.appendChild(op);
     });
-    sel.addEventListener('change', cargarHistorial);
-    document.getElementById('f-desde').addEventListener('change', cargarHistorial);
-    document.getElementById('f-hasta').addEventListener('change', cargarHistorial);
+    sel.addEventListener('change', () => { renderHistorial(); actualizarBotonLimpiar(); });
+    document.getElementById('f-buscar').addEventListener('input', () => { renderHistorial(); actualizarBotonLimpiar(); });
   }
+
+  function actualizarBotonLimpiar() {
+    const hayFiltro = document.getElementById('f-tipo').value || document.getElementById('f-buscar').value.trim();
+    document.getElementById('btn-limpiar-filtros').classList.toggle('activo', !!hayFiltro);
+  }
+
   function limpiarFiltros() {
     document.getElementById('f-tipo').value = '';
-    document.getElementById('f-desde').value = '';
-    document.getElementById('f-hasta').value = '';
-    cargarHistorial();
+    document.getElementById('f-buscar').value = '';
+    renderHistorial();
+    actualizarBotonLimpiar();
   }
 
   function cargarHistorial() {
-    const filtros = {
-      id_mascota: idMascota,
-      tipo_evento: document.getElementById('f-tipo').value,
-      desde: document.getElementById('f-desde').value,
-      hasta: document.getElementById('f-hasta').value
-    };
-    llamar('getHistorial', filtros).then(data => {
-      const cont = document.getElementById('lista-historial');
-      if (!Array.isArray(data)) { cont.innerHTML = '<div class="vacio">No se pudo cargar el historial.</div>'; return; }
-      if (data.length === 0) { cont.innerHTML = '<div class="vacio">No hay eventos registrados con estos filtros.</div>'; return; }
-      data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-      cont.innerHTML = '';
-      data.forEach(ev => {
-        const fila = document.createElement('div');
-        fila.className = 'fila-evento';
-        const desc = ev.descripcion || ev.campo_extra_1 || '';
-        fila.innerHTML =
-          '<div class="icono-evento">' + iconoTipo(ev.tipo_evento) + '</div>' +
-          '<div class="info-evento"><p class="tipo">' + nombreParam(ev.tipo_evento) + '</p><p class="desc">' + desc + '</p></div>' +
-          '<span class="fecha-evento">' + formatearFecha(ev.fecha) + '</span>';
-        cont.appendChild(fila);
-      });
+    llamar('getHistorial', { id_mascota: idMascota }).then(data => {
+      historialCompleto = Array.isArray(data) ? data : [];
+      renderHistorial();
     });
+  }
+
+  function renderHistorial() {
+    const tipoFiltro = document.getElementById('f-tipo').value;
+    const textoFiltro = document.getElementById('f-buscar').value.trim().toLowerCase();
+
+    let data = historialCompleto.filter(ev => {
+      if (tipoFiltro && ev.tipo_evento !== tipoFiltro) return false;
+      if (textoFiltro) {
+        const textoCompleto = [ev.descripcion, ev.campo_extra_1, ev.campo_extra_2, ev.campo_extra_3, ev.campo_extra_4, ev.campo_extra_5]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (!textoCompleto.includes(textoFiltro)) return false;
+      }
+      return true;
+    });
+
+    const cont = document.getElementById('lista-historial');
+    if (data.length === 0) {
+      cont.innerHTML = '<div class="vacio">No hay eventos registrados con estos filtros.</div>';
+      return;
+    }
+    data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    cont.innerHTML = '';
+    const hoy = new Date();
+    data.forEach(ev => {
+      const fila = document.createElement('div');
+      fila.className = 'fila-evento';
+      fila.style.cursor = 'pointer';
+      const desc = ev.descripcion || ev.campo_extra_1 || '';
+
+      let badge = '';
+      if (ev.proxima_fecha) {
+        const prox = new Date(ev.proxima_fecha);
+        const en7dias = new Date(); en7dias.setDate(hoy.getDate() + 7);
+        if (prox < hoy) badge = '<span class="badge-alerta vencido">Vencido</span>';
+        else if (prox <= en7dias) badge = '<span class="badge-alerta por-vencer">Por vencer</span>';
+      }
+
+      fila.innerHTML =
+        '<div class="icono-evento">' + iconoTipo(ev.tipo_evento) + '</div>' +
+        '<div class="info-evento"><p class="tipo">' + nombreParam(ev.tipo_evento) + '</p><p class="desc">' + desc + '</p></div>' +
+        badge +
+        '<span class="fecha-evento">' + formatearFecha(ev.fecha) + '</span>';
+      fila.onclick = () => abrirDetalleEvento(ev);
+      cont.appendChild(fila);
+    });
+  }
+
+  function abrirDetalleEvento(ev) {
+    document.getElementById('detalle-titulo').textContent = nombreParam(ev.tipo_evento);
+    const filas = [];
+    filas.push(['Fecha', formatearFecha(ev.fecha)]);
+    if (ev.descripcion) filas.push(['Descripción', ev.descripcion]);
+
+    const camposDelTipo = catalogoCampos.filter(c => c.id_parametro === ev.tipo_evento).sort((a, b) => a.num_campo - b.num_campo);
+    camposDelTipo.forEach(c => {
+      const valor = ev['campo_extra_' + c.num_campo];
+      if (valor) filas.push([c.label, valor]);
+    });
+
+    if (ev.costo) filas.push(['Costo', 'S/ ' + parseFloat(ev.costo).toFixed(2)]);
+    if (ev.periodicidad_dias) filas.push(['Se repite cada', ev.periodicidad_dias + ' días']);
+    if (ev.proxima_fecha) filas.push(['Próxima fecha', formatearFecha(ev.proxima_fecha)]);
+
+    document.getElementById('detalle-contenido').innerHTML = filas.map(f =>
+      '<div class="detalle-fila"><span class="etiqueta">' + f[0] + '</span><span class="valor">' + f[1] + '</span></div>'
+    ).join('');
+    document.getElementById('modal-detalle').classList.add('visible');
+  }
+  function cerrarModalDetalle() {
+    document.getElementById('modal-detalle').classList.remove('visible');
   }
 
   function iconoTipo(idTipo) {
@@ -510,10 +597,13 @@
       data.forEach(a => {
         const fila = document.createElement('div');
         fila.className = 'fila-alimento';
+        const kgValido = a.kg && !isNaN(parseFloat(a.kg)) ? parseFloat(a.kg) + ' kg' : '';
+        const precioValido = a.precio && !isNaN(parseFloat(a.precio)) ? 'S/ ' + parseFloat(a.precio).toFixed(2) : '';
+        const encabezado = [a.marca, kgValido, precioValido].filter(Boolean).join(' · ');
         const duracion = a.duracion_dias ? a.duracion_dias + ' días de duración' : 'En uso actualmente';
         fila.innerHTML =
           '<div class="icono-evento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>' +
-          '<div class="info-evento"><p class="tipo">' + a.marca + ' · ' + a.kg + ' kg</p><p class="desc">' + duracion + '</p></div>' +
+          '<div class="info-evento"><p class="tipo">' + encabezado + '</p><p class="desc">' + duracion + '</p></div>' +
           '<span class="fecha-evento">' + formatearFecha(a.fecha_compra) + '</span>';
         cont.appendChild(fila);
       });
