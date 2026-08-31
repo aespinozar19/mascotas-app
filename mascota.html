@@ -369,12 +369,18 @@
     return p ? p.nombre : id;
   }
 
+  // Validación estricta: parseFloat("2026-08-25...") devuelve 2026, aceptando fechas
+  // corruptas como si fueran números válidos. Este regex exige que TODO el string sea numérico.
+  function esNumeroValido(valor) {
+    return valor !== '' && valor !== null && valor !== undefined && /^-?\d+(\.\d+)?$/.test(String(valor).trim());
+  }
+
   function pintarFicha(m) {
     document.getElementById('m-nombre-titulo').textContent = m.nombre;
     const partes = [nombreParam(m.tipo)];
     if (m.raza) partes.push(m.raza);
     if (m.sexo) partes.push(nombreParam(m.sexo));
-    if (m.peso_actual && !isNaN(parseFloat(m.peso_actual))) partes.push(parseFloat(m.peso_actual) + ' kg');
+    if (esNumeroValido(m.peso_actual)) partes.push(parseFloat(m.peso_actual) + ' kg');
     if (m.fecha_nacimiento) partes.push('Nació el ' + formatearFecha(m.fecha_nacimiento));
     document.getElementById('m-detalle-sub').textContent = partes.join(' · ');
   }
@@ -503,7 +509,7 @@
       if (valor) filas.push([c.label, c.tipo_dato === 'fecha' ? formatearFecha(valor) : valor]);
     });
 
-    if (ev.costo) filas.push(['Costo', 'S/ ' + parseFloat(ev.costo).toFixed(2)]);
+    if (esNumeroValido(ev.costo)) filas.push(['Costo', 'S/ ' + parseFloat(ev.costo).toFixed(2)]);
     if (ev.periodicidad_dias) filas.push(['Se repite cada', ev.periodicidad_dias + ' días']);
     if (ev.proxima_fecha) filas.push(['Próxima fecha', formatearFecha(ev.proxima_fecha)]);
 
@@ -624,8 +630,8 @@
       data.forEach(a => {
         const fila = document.createElement('div');
         fila.className = 'fila-alimento';
-        const kgValido = a.kg && !isNaN(parseFloat(a.kg)) ? parseFloat(a.kg) + ' kg' : '';
-        const precioValido = a.precio && !isNaN(parseFloat(a.precio)) ? 'S/ ' + parseFloat(a.precio).toFixed(2) : '';
+        const kgValido = esNumeroValido(a.kg) ? parseFloat(a.kg) + ' kg' : '';
+        const precioValido = esNumeroValido(a.precio) ? 'S/ ' + parseFloat(a.precio).toFixed(2) : '';
         const encabezado = [a.marca, kgValido, precioValido].filter(Boolean).join(' · ');
         const duracion = a.duracion_dias ? a.duracion_dias + ' días de duración' : 'En uso actualmente';
         fila.innerHTML =
