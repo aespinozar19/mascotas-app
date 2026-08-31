@@ -128,6 +128,23 @@
     font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 60;
   }
   .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Responsive: mobile ===== */
+  @media (max-width: 480px) {
+    header { padding: 14px 16px; }
+    .brand span { font-size: 15px; }
+    main { padding: 20px 16px 50px; }
+    .ficha-header { padding: 16px; gap: 12px; }
+    .ficha-header h1 { font-size: 18px; }
+    .filtros { gap: 6px; }
+    .filtros select, .filtros input { flex: 1 1 auto; min-width: 0; }
+    .filtros .btn-limpiar { flex-basis: 100%; margin-left: 0; }
+    .fila-evento, .fila-alimento { flex-wrap: wrap; }
+    .fecha-evento { flex-basis: 100%; text-align: left; margin-top: 2px; }
+    .modal-fondo { padding: 24px 14px; }
+    .modal-box { padding: 22px 18px; }
+    .fila-2 { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
