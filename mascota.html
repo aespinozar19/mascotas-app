@@ -440,14 +440,24 @@
     data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     cont.innerHTML = '';
     const hoy = new Date();
+
+    // El badge de vencido/por-vencer solo debe verse en el evento más reciente de cada tipo:
+    // uno viejo ya reemplazado por un registro nuevo no debe seguir marcado para siempre.
+    const masRecientePorTipo = {};
+    historialCompleto.forEach(ev => {
+      const actual = masRecientePorTipo[ev.tipo_evento];
+      if (!actual || new Date(ev.fecha) > new Date(actual.fecha)) masRecientePorTipo[ev.tipo_evento] = ev;
+    });
+
     data.forEach(ev => {
       const fila = document.createElement('div');
       fila.className = 'fila-evento';
       fila.style.cursor = 'pointer';
       const desc = ev.descripcion || ev.campo_extra_1 || '';
+      const esElMasReciente = masRecientePorTipo[ev.tipo_evento] && masRecientePorTipo[ev.tipo_evento].id_evento === ev.id_evento;
 
       let badge = '';
-      if (ev.proxima_fecha) {
+      if (esElMasReciente && ev.proxima_fecha) {
         const prox = new Date(ev.proxima_fecha);
         const en7dias = new Date(); en7dias.setDate(hoy.getDate() + 7);
         if (prox < hoy) badge = '<span class="badge-alerta vencido">Vencido</span>';
@@ -473,7 +483,7 @@
     const camposDelTipo = catalogoCampos.filter(c => c.id_parametro === ev.tipo_evento).sort((a, b) => a.num_campo - b.num_campo);
     camposDelTipo.forEach(c => {
       const valor = ev['campo_extra_' + c.num_campo];
-      if (valor) filas.push([c.label, valor]);
+      if (valor) filas.push([c.label, c.tipo_dato === 'fecha' ? formatearFecha(valor) : valor]);
     });
 
     if (ev.costo) filas.push(['Costo', 'S/ ' + parseFloat(ev.costo).toFixed(2)]);
