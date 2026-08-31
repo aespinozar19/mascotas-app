@@ -81,6 +81,7 @@
   }
   .badge-alerta.vencido { background: var(--danger-bg); color: var(--danger); }
   .badge-alerta.por-vencer { background: var(--warn-bg); color: var(--warn-ink); }
+  .badge-alerta.vigente { background: var(--accent-soft); color: var(--accent); }
 
   .btn-agregar-flotante {
     display: flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; font-weight: 500;
@@ -418,6 +419,22 @@
     });
   }
 
+  // Compara solo el día calendario (ignora la hora) para que "vencido" dependa del día real
+  // y no del momento exacto en que se abrió la página.
+  function soloFechaJS(fecha) {
+    const d = new Date(fecha);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+  function calcularEstadoVencimientoJS(proximaFecha) {
+    if (!proximaFecha) return null;
+    const hoy = soloFechaJS(new Date());
+    const prox = soloFechaJS(proximaFecha);
+    const diffDias = Math.round((prox - hoy) / 86400000);
+    if (diffDias < 0) return 'vencido';
+    if (diffDias <= 7) return 'por_vencer';
+    return 'vigente';
+  }
+
   function renderHistorial() {
     const tipoFiltro = document.getElementById('f-tipo').value;
     const textoFiltro = document.getElementById('f-buscar').value.trim().toLowerCase();
@@ -439,15 +456,17 @@
     }
     data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     cont.innerHTML = '';
-    const hoy = new Date();
 
-    // El badge de vencido/por-vencer solo debe verse en el evento más reciente de cada tipo:
+    // El badge de vencimiento solo debe verse en el evento más reciente de cada tipo:
     // uno viejo ya reemplazado por un registro nuevo no debe seguir marcado para siempre.
     const masRecientePorTipo = {};
     historialCompleto.forEach(ev => {
       const actual = masRecientePorTipo[ev.tipo_evento];
       if (!actual || new Date(ev.fecha) > new Date(actual.fecha)) masRecientePorTipo[ev.tipo_evento] = ev;
     });
+
+    const etiquetas = { vencido: 'Vencido', por_vencer: 'Por vencer', vigente: 'Vigente' };
+    const clases = { vencido: 'vencido', por_vencer: 'por-vencer', vigente: 'vigente' };
 
     data.forEach(ev => {
       const fila = document.createElement('div');
@@ -458,10 +477,8 @@
 
       let badge = '';
       if (esElMasReciente && ev.proxima_fecha) {
-        const prox = new Date(ev.proxima_fecha);
-        const en7dias = new Date(); en7dias.setDate(hoy.getDate() + 7);
-        if (prox < hoy) badge = '<span class="badge-alerta vencido">Vencido</span>';
-        else if (prox <= en7dias) badge = '<span class="badge-alerta por-vencer">Por vencer</span>';
+        const estado = calcularEstadoVencimientoJS(ev.proxima_fecha);
+        if (estado) badge = '<span class="badge-alerta ' + clases[estado] + '">' + etiquetas[estado] + '</span>';
       }
 
       fila.innerHTML =
