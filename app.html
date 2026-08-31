@@ -137,7 +137,7 @@
   @media (max-width: 480px) {
     header { padding: 14px 16px; }
     .brand span { font-size: 15px; }
-    .usuario-actual span { display: none; }
+    #nombre-usuario { display: none; }
     main { padding: 24px 16px 50px; }
     h1 { font-size: 21px; }
     .grid-mascotas { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -161,6 +161,7 @@
     <span>Mascotas app</span>
   </div>
   <div class="usuario-actual">
+    <span id="link-admin" style="display:none;"><a href="admin.html" class="logout" style="text-decoration:none;">Panel admin</a></span>
     <span id="nombre-usuario"></span>
     <button class="logout" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
@@ -237,6 +238,9 @@
     window.location.href = 'index.html';
   } else {
     document.getElementById('nombre-usuario').textContent = usuarioLocal ? usuarioLocal.nombre : '';
+    if (usuarioLocal && usuarioLocal.rol === 'admin') {
+      document.getElementById('link-admin').style.display = 'inline';
+    }
     cargarCatalogo();
     cargarMascotas();
     cargarAlertas();
