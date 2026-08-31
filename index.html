@@ -219,8 +219,8 @@
 <script>
   // ===================== CONFIG =====================
   // Reemplaza estos dos valores con los tuyos.
-  const GOOGLE_CLIENT_ID = '891168012188-rlv06omnpf60gus1j69v582emeq109pp.apps.googleusercontent.com';
-  const API_URL = 'https://script.google.com/macros/s/AKfycbxCLdntDxCPLNKEUpij7aIG7OZK3UnAnsCV1FR0Uq-CbO3j1ms0zMEHJeQwBeteRfKu4g/exec';
+  const GOOGLE_CLIENT_ID = 'TU_CLIENT_ID.apps.googleusercontent.com';
+  const API_URL = 'TU_URL_DE_WEB_APP/exec';
   // ====================================================
 
   function mostrarVista(id) {
@@ -266,10 +266,9 @@
     document.getElementById('spinner-login').style.display = 'block';
     document.getElementById('error-login').style.display = 'none';
 
-    fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'login', idToken: idToken })
-    })
+    const url = API_URL + '?action=login&idToken=' + encodeURIComponent(idToken);
+
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         document.getElementById('spinner-login').style.display = 'none';
