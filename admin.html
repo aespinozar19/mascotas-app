@@ -122,7 +122,7 @@
   @media (max-width: 480px) {
     header { padding: 14px 16px; }
     .brand span { font-size: 15px; }
-    .usuario-actual span { display: none; }
+    #nombre-admin { display: none; }
     main { padding: 24px 16px 50px; }
     h1 { font-size: 21px; }
     .fila { flex-wrap: wrap; gap: 10px; }
@@ -143,6 +143,7 @@
     <span>Mascotas app · admin</span>
   </div>
   <div class="usuario-actual">
+    <a href="app.html" class="logout" style="text-decoration:none;">Mis mascotas</a>
     <span id="nombre-admin"></span>
     <button class="logout" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
