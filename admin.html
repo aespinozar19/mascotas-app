@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mascotas App - Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF2ED;
+    --card: #FFFFFF;
+    --ink: #1F2A24;
+    --ink-muted: #5B6B60;
+    --accent: #2F6F62;
+    --accent-soft: #E7F0EC;
+    --border: #E1E7E1;
+    --warn-bg: #FBF3E4;
+    --warn-ink: #8A5A11;
+    --danger: #C24B4B;
+    --danger-bg: #FBEAEA;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--ink);
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { width: 22px; height: 22px; color: var(--accent); }
+  .brand span { font-family: 'Fraunces', serif; font-weight: 500; font-size: 17px; }
+  .usuario-actual { display: flex; align-items: center; gap: 10px; }
+  .usuario-actual span { font-size: 13px; color: var(--ink-muted); }
+  button.logout {
+    font-family: inherit; font-size: 13px; color: var(--ink-muted);
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer;
+  }
+  button.logout:hover { background: #F4F6F3; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 24px; margin: 0 0 4px; }
+  .subt { color: var(--ink-muted); font-size: 14px; margin: 0 0 28px; }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab {
+    font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink-muted);
+    background: none; border: none; padding: 10px 4px; margin-right: 22px; cursor: pointer;
+    border-bottom: 2px solid transparent; position: relative; top: 1px;
+  }
+  .tab.activo { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .conteo {
+    display: inline-block; background: var(--accent-soft); color: var(--accent);
+    font-size: 11px; font-weight: 500; border-radius: 20px; padding: 1px 7px; margin-left: 6px;
+  }
+
+  .vista { display: none; }
+  .vista.activa { display: block; }
+
+  .fila {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%; background: var(--accent-soft);
+    color: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-weight: 500; font-size: 14px; flex-shrink: 0;
+  }
+  .info { flex: 1; min-width: 0; }
+  .info p.nombre { margin: 0; font-size: 14px; font-weight: 500; }
+  .info p.email { margin: 0; font-size: 13px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge.admin { background: var(--accent-soft); color: var(--accent); }
+  .badge.usuario { background: #F0F0EC; color: var(--ink-muted); }
+  .acciones { display: flex; gap: 6px; flex-shrink: 0; }
+
+  button.accion {
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; border: 1px solid var(--border);
+    background: transparent; color: var(--ink);
+  }
+  button.aprobar { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.aprobar:hover { background: var(--accent-soft, #234F45); opacity: .92; }
+  button.rechazar:hover, button.bloquear:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bg); }
+  button.desbloquear:hover { background: var(--accent-soft); color: var(--accent); }
+
+  select.rol-select {
+    font-family: inherit; font-size: 13px; border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 8px; background: #fff; color: var(--ink); cursor: pointer;
+  }
+
+  .vacio {
+    text-align: center; padding: 50px 20px; color: var(--ink-muted); font-size: 14px;
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s ease;
+  }
+  .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .carga { text-align: center; padding: 50px; color: var(--ink-muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <ellipse cx="7" cy="8" rx="2" ry="2.6"/><ellipse cx="12.5" cy="5.7" rx="2" ry="2.6"/>
+      <ellipse cx="17.7" cy="8" rx="2" ry="2.6"/><ellipse cx="19.6" cy="13" rx="2" ry="2.6"/>
+      <path d="M12.5 12c-3 0-6.2 2.4-6.2 5.6 0 1.7 1.4 2.9 3.1 2.6 1.1-.2 2-.5 3.1-.5s2 .3 3.1.5c1.7.3 3.1-.9 3.1-2.6 0-3.2-3.2-5.6-6.2-5.6z"/>
+    </svg>
+    <span>Mascotas app · admin</span>
+  </div>
+  <div class="usuario-actual">
+    <span id="nombre-admin"></span>
+    <button class="logout" onclick="cerrarSesion()">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+  <h1>Panel de administrador</h1>
+  <p class="subt">Aprueba, bloquea o gestiona el acceso de los usuarios.</p>
+
+  <div class="tabs">
+    <button class="tab activo" id="tab-pendientes" onclick="cambiarTab('pendientes')">
+      Pendientes<span class="conteo" id="conteo-pendientes">0</span>
+    </button>
+    <button class="tab" id="tab-activos" onclick="cambiarTab('activos')">
+      Usuarios<span class="conteo" id="conteo-activos">0</span>
+    </button>
+  </div>
+
+  <div class="vista activa" id="vista-pendientes">
+    <div id="lista-pendientes" class="carga">Cargando...</div>
+  </div>
+
+  <div class="vista" id="vista-activos">
+    <div id="lista-activos" class="carga">Cargando...</div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===================== CONFIG =====================
+  const API_URL = 'TU_URL_DE_WEB_APP/exec';
+  // ====================================================
+
+  const idToken = localStorage.getItem('idToken');
+  const usuarioLocal = JSON.parse(localStorage.getItem('usuario') || 'null');
+
+  if (!idToken) {
+    window.location.href = 'index.html';
+  } else {
+    document.getElementById('nombre-admin').textContent = usuarioLocal ? usuarioLocal.nombre : '';
+    cargarPendientes();
+    cargarActivos();
+  }
+
+  function iniciales(nombre) {
+    if (!nombre) return '?';
+    return nombre.trim().split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
+  }
+
+  function llamar(action, payload) {
+    let url = API_URL + '?action=' + action + '&idToken=' + encodeURIComponent(idToken);
+    if (payload) url += '&payload=' + encodeURIComponent(JSON.stringify(payload));
+    return fetch(url).then(r => r.json()).then(data => {
+      if (!data.ok && data.estado) {
+        // sesión ya no es admin o fue bloqueada -> volver al login
+        cerrarSesion();
+      }
+      return data;
+    });
+  }
+
+  function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('visible');
+    setTimeout(() => t.classList.remove('visible'), 2200);
+  }
+
+  function cambiarTab(nombre) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('activo'));
+    document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+    document.getElementById('tab-' + nombre).classList.add('activo');
+    document.getElementById('vista-' + nombre).classList.add('activa');
+  }
+
+  function cargarPendientes() {
+    llamar('getUsuariosPendientes').then(data => {
+      if (!Array.isArray(data)) return;
+      document.getElementById('conteo-pendientes').textContent = data.length;
+      const cont = document.getElementById('lista-pendientes');
+      if (data.length === 0) {
+        cont.innerHTML = '<div class="vacio">No hay solicitudes pendientes.</div>';
+        return;
+      }
+      cont.innerHTML = '';
+      data.forEach(u => {
+        const fila = document.createElement('div');
+        fila.className = 'fila';
+        fila.innerHTML =
+          '<div class="avatar">' + iniciales(u.nombre) + '</div>' +
+          '<div class="info"><p class="nombre">' + (u.nombre || 'Sin nombre') + '</p><p class="email">' + u.email + '</p></div>' +
+          '<div class="acciones">' +
+            '<button class="accion aprobar" data-email="' + u.email + '">Aprobar</button>' +
+            '<button class="accion rechazar" data-email="' + u.email + '">Rechazar</button>' +
+          '</div>';
+        fila.querySelector('.aprobar').onclick = () => aprobar(u.email);
+        fila.querySelector('.rechazar').onclick = () => rechazar(u.email);
+        cont.appendChild(fila);
+      });
+    });
+  }
+
+  function cargarActivos() {
+    llamar('getUsuarios').then(data => {
+      if (!Array.isArray(data)) return;
+      const activos = data.filter(u => u.estado !== 'pendiente');
+      document.getElementById('conteo-activos').textContent = activos.length;
+      const cont = document.getElementById('lista-activos');
+      if (activos.length === 0) {
+        cont.innerHTML = '<div class="vacio">Todavía no hay usuarios gestionados.</div>';
+        return;
+      }
+      cont.innerHTML = '';
+      activos.forEach(u => {
+        const esUnoMismo = usuarioLocal && u.email === usuarioLocal.email;
+        const fila = document.createElement('div');
+        fila.className = 'fila';
+        fila.innerHTML =
+          '<div class="avatar">' + iniciales(u.nombre) + '</div>' +
+          '<div class="info"><p class="nombre">' + (u.nombre || 'Sin nombre') + '</p><p class="email">' + u.email + '</p></div>' +
+          '<span class="badge ' + u.rol + '">' + (u.rol === 'admin' ? 'Admin' : 'Usuario') + '</span>' +
+          '<div class="acciones"></div>';
+
+        const acciones = fila.querySelector('.acciones');
+
+        if (!esUnoMismo) {
+          const selectRol = document.createElement('select');
+          selectRol.className = 'rol-select';
+          selectRol.innerHTML = '<option value="usuario">Usuario</option><option value="admin">Admin</option>';
+          selectRol.value = u.rol;
+          selectRol.onchange = () => cambiarRol(u.email, selectRol.value);
+          acciones.appendChild(selectRol);
+        }
+
+        const btnEstado = document.createElement('button');
+        btnEstado.className = 'accion ' + (u.estado === 'bloqueado' ? 'desbloquear' : 'bloquear');
+        btnEstado.textContent = u.estado === 'bloqueado' ? 'Desbloquear' : 'Bloquear';
+        if (esUnoMismo) { btnEstado.disabled = true; btnEstado.style.opacity = '0.4'; }
+        else btnEstado.onclick = () => toggleBloqueo(u.email, u.estado);
+        acciones.appendChild(btnEstado);
+
+        cont.appendChild(fila);
+      });
+    });
+  }
+
+  function aprobar(email) {
+    llamar('aprobarUsuario', { email }).then(data => {
+      if (data.ok) { mostrarToast('Usuario aprobado'); cargarPendientes(); cargarActivos(); }
+      else mostrarToast(data.error || 'No se pudo aprobar');
+    });
+  }
+  function rechazar(email) {
+    if (!confirm('¿Rechazar el acceso de ' + email + '?')) return;
+    llamar('bloquearUsuario', { email }).then(data => {
+      if (data.ok) { mostrarToast('Solicitud rechazada'); cargarPendientes(); cargarActivos(); }
+      else mostrarToast(data.error || 'No se pudo rechazar');
+    });
+  }
+  function toggleBloqueo(email, estadoActual) {
+    const accion = estadoActual === 'bloqueado' ? 'aprobarUsuario' : 'bloquearUsuario';
+    llamar(accion, { email }).then(data => {
+      if (data.ok) { mostrarToast(estadoActual === 'bloqueado' ? 'Usuario desbloqueado' : 'Usuario bloqueado'); cargarActivos(); }
+      else mostrarToast(data.error || 'No se pudo actualizar');
+    });
+  }
+  function cambiarRol(email, nuevoRol) {
+    llamar('cambiarRol', { email, rol: nuevoRol }).then(data => {
+      if (data.ok) mostrarToast('Rol actualizado');
+      else { mostrarToast(data.error || 'No se pudo cambiar el rol'); cargarActivos(); }
+    });
+  }
+
+  function cerrarSesion() {
+    localStorage.removeItem('idToken');
+    localStorage.removeItem('usuario');
+    window.location.href = 'index.html';
+  }
+</script>
+
+</body>
+</html>
