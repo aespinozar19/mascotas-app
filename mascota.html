@@ -51,13 +51,37 @@
   .icono-mascota-grande svg { width: 28px; height: 28px; }
   .ficha-header h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 20px; margin: 0 0 4px; }
   .ficha-header p { margin: 0; font-size: 13px; color: var(--ink-muted); }
+  .ficha-header-acciones { margin-left: auto; flex-shrink: 0; display: flex; gap: 8px; }
   .btn-editar-mascota {
-    margin-left: auto; flex-shrink: 0; font-family: inherit; font-size: 13px; color: var(--ink-muted);
+    font-family: inherit; font-size: 13px; color: var(--ink-muted);
     background: none; border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; cursor: pointer;
     display: flex; align-items: center; gap: 5px;
   }
   .btn-editar-mascota:hover { background: #F4F6F3; color: var(--accent); border-color: var(--accent); }
   .btn-editar-mascota svg { width: 14px; height: 14px; }
+
+  #m-badge-compartida {
+    display: inline-block; margin-top: 4px !important; font-size: 12px !important;
+    color: var(--accent) !important; font-weight: 500;
+  }
+
+  .lista-comparticiones { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .aviso-tope-comparticion { font-size: 13px; color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 10px 12px; margin: 4px 0 0; }
+  .lista-comparticiones .carga-comparticiones { font-size: 13px; color: var(--ink-muted); text-align: center; }
+  .item-comparticion {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .item-comparticion:last-child { border-bottom: none; }
+  .item-comparticion .info { flex: 1; min-width: 0; }
+  .item-comparticion .info p.email { margin: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item-comparticion .info p.detalle { margin: 0; font-size: 12px; color: var(--ink-muted); }
+  .item-comparticion button {
+    font-family: inherit; font-size: 12px; color: var(--danger-ink, #9A3B3B); background: none;
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; flex-shrink: 0;
+  }
+  .item-comparticion button:hover { background: var(--danger-bg, #FBEAEA); }
+
 
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
   .tab {
@@ -221,11 +245,18 @@
     <div>
       <h1 id="m-nombre-titulo">Cargando...</h1>
       <p id="m-detalle-sub"></p>
+      <p id="m-badge-compartida" style="display:none;"></p>
     </div>
-    <button class="btn-editar-mascota" onclick="abrirModalEditarMascota()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Editar
-    </button>
+    <div class="ficha-header-acciones">
+      <button class="btn-editar-mascota" id="btn-editar-mascota" onclick="abrirModalEditarMascota()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Editar
+      </button>
+      <button class="btn-editar-mascota" id="btn-compartir-mascota" onclick="abrirModalCompartir()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+        Compartir
+      </button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -385,6 +416,45 @@
   </div>
 </div>
 
+<div class="modal-fondo" id="modal-fondo-compartir">
+  <div class="modal-box">
+    <h2>Compartir mascota</h2>
+    <div id="form-invitar-compartir">
+      <div class="campo">
+        <label>Email de la persona a invitar</label>
+        <input type="email" id="cp-email" placeholder="nombre@ejemplo.com">
+        <p class="error-campo" id="err-cp-email">Ingresa un email válido</p>
+      </div>
+      <div class="fila-2">
+        <div class="campo">
+          <label>Rol (etiqueta, opcional)</label>
+          <input type="text" id="cp-rol" placeholder="Ej. Familiar">
+        </div>
+        <div class="campo">
+          <label>Nivel de acceso</label>
+          <select id="cp-nivel">
+            <option value="lectura">Solo ver</option>
+            <option value="lectura_escritura" selected>Ver y agregar eventos</option>
+            <option value="completo">Ver, agregar y editar datos de la mascota</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-acciones" style="justify-content: flex-end;">
+        <button class="primario" onclick="guardarComparticion()">Invitar</button>
+      </div>
+    </div>
+    <p class="aviso-tope-comparticion" id="aviso-tope-comparticion" style="display:none;">
+      Ya compartiste esta mascota con el máximo de personas permitido. Deja de compartir con alguien de la lista para poder invitar a alguien más.
+    </p>
+    <div class="lista-comparticiones" id="lista-comparticiones">
+      <p class="carga-comparticiones">Cargando accesos...</p>
+    </div>
+    <div class="modal-acciones">
+      <button class="secundario" onclick="cerrarModalCompartir()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <button class="feedback-flotante" id="btn-feedback" onclick="toggleFeedback()" aria-label="Dejar feedback">
@@ -532,11 +602,13 @@
     Promise.all([
       llamar('getParametrias', null, null, true),
       llamar('getParametriasCampos', null, null, true),
-      llamar('getMascotas')
-    ]).then(([params, campos, mascotas]) => {
+      llamar('getMascotas'),
+      llamar('getMiPerfil')
+    ]).then(([params, campos, mascotas, perfil]) => {
       catalogo = Array.isArray(params) ? params : [];
       catalogoCampos = Array.isArray(campos) ? campos : [];
       tiposEvento = catalogo.filter(p => p.categoria === 'TIPO_EVENTO' && p.activo);
+      compartirHabilitadoGlobal = perfil && perfil.ok ? !!perfil.compartir_habilitado : true;
 
       const mascota = Array.isArray(mascotas) ? mascotas.find(m => m.id_mascota === idMascota) : null;
       if (!mascota) {
@@ -567,6 +639,7 @@
   }
 
   let mascotaActual = null;
+  let compartirHabilitadoGlobal = true;
 
   function pintarFicha(m) {
     mascotaActual = m;
@@ -577,6 +650,28 @@
     if (esNumeroValido(m.peso_actual)) partes.push(parseFloat(m.peso_actual) + ' kg');
     if (m.fecha_nacimiento) partes.push('Nació el ' + formatearFecha(m.fecha_nacimiento));
     document.getElementById('m-detalle-sub').textContent = partes.join(' · ');
+
+    // "Editar" y "Compartir" son solo del dueño. "Agregar evento" requiere permiso de escritura.
+    document.getElementById('btn-editar-mascota').style.display = (m.nivel_permiso === 'completo') ? 'flex' : 'none';
+    document.getElementById('btn-compartir-mascota').style.display = (m.es_propia && compartirHabilitadoGlobal) ? 'flex' : 'none';
+    document.querySelectorAll('.btn-agregar-flotante').forEach(btn => {
+      btn.style.display = (m.nivel_permiso === 'lectura_escritura' || m.nivel_permiso === 'completo') ? 'flex' : 'none';
+    });
+
+    const badge = document.getElementById('m-badge-compartida');
+    if (!m.es_propia) {
+      badge.textContent = 'Compartida por ' + (m.nombre_dueno || 'otro usuario') + (m.rol_compartido ? ' · ' + m.rol_compartido : '') + ' · ' + etiquetaNivelPermiso(m.nivel_permiso);
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function etiquetaNivelPermiso(nivel) {
+    if (nivel === 'lectura') return 'Solo lectura';
+    if (nivel === 'lectura_escritura') return 'Puede agregar eventos';
+    if (nivel === 'completo') return 'Acceso completo';
+    return '';
   }
 
   function cambiarTab(nombre) {
@@ -914,6 +1009,84 @@
   }
   function cerrarModalEditarMascota() {
     document.getElementById('modal-editar-mascota').classList.remove('visible');
+  }
+
+  // ===== COMPARTIR MASCOTA =====
+  function abrirModalCompartir() {
+    document.getElementById('cp-email').value = '';
+    document.getElementById('cp-rol').value = '';
+    document.getElementById('cp-nivel').value = 'lectura_escritura';
+    document.getElementById('err-cp-email').style.display = 'none';
+    document.getElementById('modal-fondo-compartir').classList.add('visible');
+    cargarComparticiones();
+  }
+  function cerrarModalCompartir() {
+    document.getElementById('modal-fondo-compartir').classList.remove('visible');
+  }
+
+  const LIMITE_COMPARTIDOS_UI = 2; // debe coincidir con LIMITE_COMPARTIDOS_POR_MASCOTA en Code.gs
+
+  function cargarComparticiones() {
+    const cont = document.getElementById('lista-comparticiones');
+    cont.innerHTML = '<p class="carga-comparticiones">Cargando accesos...</p>';
+    llamar('getComparticionesMascota', { id_mascota: idMascota }).then(data => {
+      if (!data.ok) { cont.innerHTML = '<p class="carga-comparticiones">No se pudo cargar.</p>'; return; }
+
+      const enTope = data.compartidos.length >= LIMITE_COMPARTIDOS_UI;
+      document.getElementById('form-invitar-compartir').style.display = enTope ? 'none' : 'block';
+      document.getElementById('aviso-tope-comparticion').style.display = enTope ? 'block' : 'none';
+
+      if (data.compartidos.length === 0) {
+        cont.innerHTML = '<p class="carga-comparticiones">Todavía no compartiste esta mascota con nadie.</p>';
+        return;
+      }
+      cont.innerHTML = '';
+      data.compartidos.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'item-comparticion';
+        item.innerHTML =
+          '<div class="info">' +
+            '<p class="email">' + c.email_invitado + '</p>' +
+            '<p class="detalle">' + (c.rol || 'Sin rol') + ' · ' + etiquetaNivelPermiso(c.nivel_permiso) + '</p>' +
+          '</div>' +
+          '<button>Dejar de compartir</button>';
+        item.querySelector('button').onclick = () => revocarComparticion(c.id_acceso);
+        cont.appendChild(item);
+      });
+    });
+  }
+
+  function guardarComparticion() {
+    const email = document.getElementById('cp-email').value.trim();
+    if (!email || !email.includes('@')) {
+      document.getElementById('err-cp-email').style.display = 'block';
+      return;
+    }
+    document.getElementById('err-cp-email').style.display = 'none';
+
+    llamar('compartirMascota', null, {
+      id_mascota: idMascota,
+      email_invitado: email,
+      rol: document.getElementById('cp-rol').value.trim(),
+      nivel_permiso: document.getElementById('cp-nivel').value
+    }).then(data => {
+      if (data.ok) {
+        mostrarToast('Mascota compartida con ' + email);
+        document.getElementById('cp-email').value = '';
+        document.getElementById('cp-rol').value = '';
+        cargarComparticiones();
+      } else {
+        mostrarToast(data.error || 'No se pudo compartir');
+      }
+    });
+  }
+
+  function revocarComparticion(idAcceso) {
+    if (!confirm('¿Dejar de compartir esta mascota con este usuario?')) return;
+    llamar('revocarComparticion', null, { id_acceso: idAcceso }).then(data => {
+      if (data.ok) { mostrarToast('Ya no comparten esta mascota'); cargarComparticiones(); }
+      else mostrarToast(data.error || 'No se pudo actualizar');
+    });
   }
 
   function guardarEdicionMascota() {
