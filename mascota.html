@@ -168,6 +168,34 @@
     .modal-box { padding: 22px 18px; }
     .fila-2 { grid-template-columns: 1fr; }
   }
+  /* ===== Feedback flotante ===== */
+  .feedback-flotante {
+    position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px;
+    border-radius: 50%; background: var(--accent); color: #fff; border: none;
+    box-shadow: 0 4px 14px rgba(20,30,25,0.25); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; z-index: 60;
+    transition: transform .15s ease;
+  }
+  .feedback-flotante:hover { transform: scale(1.06); }
+  .feedback-flotante svg { width: 24px; height: 24px; }
+  .feedback-panel {
+    position: fixed; bottom: 82px; right: 20px; width: 300px; max-width: calc(100vw - 40px);
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(20,30,25,0.15); padding: 14px; z-index: 60;
+    display: none; flex-direction: column; gap: 10px;
+  }
+  .feedback-panel.visible { display: flex; }
+  .feedback-panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
+  .feedback-cerrar { background: none; border: none; font-size: 20px; color: var(--ink-muted); cursor: pointer; line-height: 1; padding: 0 4px; }
+  .feedback-panel textarea {
+    width: 100%; min-height: 80px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; box-sizing: border-box;
+  }
+  .feedback-panel .primario { width: 100%; padding: 9px 16px; }
+  @media (max-width: 480px) {
+    .feedback-flotante { bottom: 16px; right: 16px; }
+    .feedback-panel { right: 16px; bottom: 78px; }
+  }
 </style>
 </head>
 <body>
@@ -359,6 +387,19 @@
 
 <div class="toast" id="toast"></div>
 
+<button class="feedback-flotante" id="btn-feedback" onclick="toggleFeedback()" aria-label="Dejar feedback">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+</button>
+
+<div class="feedback-panel" id="panel-feedback">
+  <div class="feedback-panel-header">
+    <span>¿Algo que contarnos?</span>
+    <button class="feedback-cerrar" onclick="toggleFeedback()" aria-label="Cerrar">&times;</button>
+  </div>
+  <textarea id="feedback-mensaje" placeholder="Cuéntanos qué mejorarías, qué encontraste raro, o cualquier idea..."></textarea>
+  <button class="primario" onclick="enviarFeedback()">Enviar</button>
+</div>
+
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // ===================== CONFIG =====================
@@ -466,6 +507,25 @@
     t.textContent = msg;
     t.classList.add('visible');
     setTimeout(() => t.classList.remove('visible'), 2200);
+  }
+
+  // ===================== FEEDBACK FLOTANTE =====================
+  function toggleFeedback() {
+    document.getElementById('panel-feedback').classList.toggle('visible');
+  }
+  function enviarFeedback() {
+    const textarea = document.getElementById('feedback-mensaje');
+    const mensaje = textarea.value.trim();
+    if (!mensaje) return;
+    llamar('crearFeedback', null, { mensaje: mensaje, pagina: 'mascota.html' }).then(data => {
+      if (data.ok) {
+        mostrarToast('¡Gracias por tu feedback!');
+        textarea.value = '';
+        toggleFeedback();
+      } else {
+        mostrarToast(data.error || 'No se pudo enviar');
+      }
+    });
   }
 
   function init() {
