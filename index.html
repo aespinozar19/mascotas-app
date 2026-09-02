@@ -252,7 +252,8 @@
   window.onload = function () {
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: manejarRespuestaGoogle
+      callback: manejarRespuestaGoogle,
+      auto_select: true
     });
 
     // Ancho del botón responsive: se ajusta al espacio real disponible en el card,
@@ -268,9 +269,29 @@
 
     const idTokenGuardado = localStorage.getItem('idToken');
     if (idTokenGuardado) {
-      procesarLogin(idTokenGuardado);
+      if (tokenVencido(idTokenGuardado)) {
+        // El token guardado ya expiró (usuario volvió después de horas/días).
+        // Intenta renovarlo en silencio antes de obligarlo a tocar el botón de nuevo.
+        // Si funciona, dispara manejarRespuestaGoogle igual que un login normal;
+        // si no, simplemente se queda en la pantalla de login (sin error feo).
+        google.accounts.id.prompt();
+      } else {
+        procesarLogin(idTokenGuardado);
+      }
     }
   };
+
+  function expiracionToken(token) {
+    try {
+      const payloadToken = JSON.parse(atob(token.split('.')[1]));
+      return payloadToken.exp * 1000; // exp viene en segundos, Date.now() en ms
+    } catch (e) {
+      return 0;
+    }
+  }
+  function tokenVencido(token) {
+    return expiracionToken(token) - Date.now() < 0;
+  }
 
   function manejarRespuestaGoogle(respuesta) {
     localStorage.setItem('idToken', respuesta.credential);
