@@ -801,6 +801,7 @@
     if (esNumeroValido(ev.costo)) filas.push(['Costo', 'S/ ' + parseFloat(ev.costo).toFixed(2)]);
     if (ev.periodicidad_dias) filas.push(['Se repite cada', ev.periodicidad_dias + ' días']);
     if (ev.proxima_fecha) filas.push(['Próxima fecha', formatearFecha(ev.proxima_fecha)]);
+    if (ev.nombre_registro) filas.push(['Registrado por', ev.nombre_registro]);
 
     document.getElementById('detalle-contenido').innerHTML = filas.map(f =>
       '<div class="detalle-fila"><span class="etiqueta">' + f[0] + '</span><span class="valor">' + f[1] + '</span></div>'
@@ -934,9 +935,10 @@
         const precioValido = esNumeroValido(a.precio) ? 'S/ ' + parseFloat(a.precio).toFixed(2) : '';
         const encabezado = [a.marca, kgValido, precioValido].filter(Boolean).join(' · ');
         const duracion = a.duracion_dias ? a.duracion_dias + ' días de duración' : 'En uso actualmente';
+        const autor = a.nombre_registro ? ' · Registrado por ' + a.nombre_registro : '';
         fila.innerHTML =
           '<div class="icono-evento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>' +
-          '<div class="info-evento"><p class="tipo">' + encabezado + '</p><p class="desc">' + duracion + '</p></div>' +
+          '<div class="info-evento"><p class="tipo">' + encabezado + '</p><p class="desc">' + duracion + autor + '</p></div>' +
           '<span class="fecha-evento">' + formatearFecha(a.fecha_compra) + '</span>';
         cont.appendChild(fila);
       });
