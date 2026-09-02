@@ -118,6 +118,26 @@
 
   .carga { text-align: center; padding: 50px; color: var(--ink-muted); font-size: 14px; }
 
+  /* ===== Feedback ===== */
+  .feedback-filtros { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .feedback-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
+  .feedback-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .feedback-card.no-leido { border-left: 3px solid var(--accent); }
+  .feedback-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .feedback-card-header .info { flex: 1; min-width: 0; }
+  .feedback-card-header .info p.nombre { margin: 0; font-size: 14px; font-weight: 500; }
+  .feedback-card-header .info p.meta { margin: 0; font-size: 12px; color: var(--ink-muted); }
+  .feedback-mensaje { font-size: 14px; line-height: 1.5; margin: 0 0 12px; white-space: pre-wrap; }
+  .feedback-acciones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .feedback-nota {
+    width: 100%; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; min-height: 44px; box-sizing: border-box;
+  }
+  .badge.silenciado { background: var(--warn-bg); color: var(--warn-ink); }
+
   /* ===== Responsive: mobile ===== */
   @media (max-width: 480px) {
     header { padding: 14px 16px; }
@@ -163,6 +183,9 @@
     <button class="tab" id="tab-limites" onclick="cambiarTab('limites')">
       Límites
     </button>
+    <button class="tab" id="tab-feedback" onclick="cambiarTab('feedback')">
+      Feedback<span class="conteo" id="conteo-feedback">0</span>
+    </button>
   </div>
 
   <div class="vista activa" id="vista-pendientes">
@@ -184,7 +207,26 @@
     </div>
     <div id="lista-limites" class="carga">Cargando...</div>
   </div>
+
+  <div class="vista" id="vista-feedback">
+    <div class="feedback-filtros">
+      <select id="filtro-estado-feedback" class="rol-select" onchange="pintarFeedback()">
+        <option value="todos">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="interesante">Interesante</option>
+        <option value="mejora_planificada">Mejora planificada</option>
+        <option value="resuelto">Resuelto</option>
+        <option value="descartado">Descartado</option>
+      </select>
+      <label class="feedback-check">
+        <input type="checkbox" id="filtro-silenciados-feedback" onchange="pintarFeedback()">
+        Mostrar silenciados
+      </label>
+    </div>
+    <div id="lista-feedback" class="carga">Cargando...</div>
+  </div>
 </main>
+
 
 <div class="toast" id="toast"></div>
 
@@ -206,6 +248,7 @@
     cargarPendientes();
     cargarActivos();
     cargarLimites();
+    cargarFeedback();
   }
 
   // ===================== RENOVACIÓN SILENCIOSA DE SESIÓN =====================
@@ -476,6 +519,114 @@
     llamar('actualizarLimiteUsuario', { id_usuario: idUsuario, nuevo_valor: nuevoValor }).then(data => {
       if (data.ok) { mostrarToast('Límite actualizado'); cargarLimites(); }
       else { mostrarToast(data.error || 'No se pudo actualizar'); cargarLimites(); }
+    });
+  }
+
+  // ===================== FEEDBACK =====================
+  const ETIQUETAS_ESTADO_FEEDBACK = {
+    pendiente: 'Pendiente',
+    interesante: 'Interesante',
+    mejora_planificada: 'Mejora planificada',
+    resuelto: 'Resuelto',
+    descartado: 'Descartado'
+  };
+  let feedbackData = [];
+
+  function cargarFeedback() {
+    llamar('getFeedback').then(data => {
+      if (!data.ok) {
+        document.getElementById('lista-feedback').innerHTML =
+          '<div class="vacio">No se pudo cargar: ' + (data.error || 'error desconocido') + '</div>';
+        return;
+      }
+      feedbackData = data.feedback;
+      document.getElementById('conteo-feedback').textContent = feedbackData.filter(f => !f.leido).length;
+      pintarFeedback();
+    });
+  }
+
+  function pintarFeedback() {
+    const filtroEstado = document.getElementById('filtro-estado-feedback').value;
+    const mostrarSilenciados = document.getElementById('filtro-silenciados-feedback').checked;
+
+    let items = feedbackData;
+    if (filtroEstado !== 'todos') items = items.filter(f => f.estado === filtroEstado);
+    if (!mostrarSilenciados) items = items.filter(f => !f.usuario_silenciado);
+
+    const cont = document.getElementById('lista-feedback');
+    if (items.length === 0) {
+      cont.innerHTML = '<div class="vacio">No hay feedback que coincida con este filtro.</div>';
+      return;
+    }
+    cont.innerHTML = '';
+    items.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'feedback-card' + (f.leido ? '' : ' no-leido');
+
+      const fecha = f.fecha_registro ? new Date(f.fecha_registro).toLocaleDateString() : '';
+      const opcionesEstado = Object.keys(ETIQUETAS_ESTADO_FEEDBACK)
+        .map(k => '<option value="' + k + '"' + (k === f.estado ? ' selected' : '') + '>' + ETIQUETAS_ESTADO_FEEDBACK[k] + '</option>')
+        .join('');
+
+      card.innerHTML =
+        '<div class="feedback-card-header">' +
+          '<div class="avatar">' + iniciales(f.nombre_usuario) + '</div>' +
+          '<div class="info">' +
+            '<p class="nombre">' + (f.nombre_usuario || 'Sin nombre') + '</p>' +
+            '<p class="meta">' + f.email_usuario + ' · ' + (f.pagina || 'página desconocida') + ' · ' + fecha + '</p>' +
+          '</div>' +
+          (f.usuario_silenciado ? '<span class="badge silenciado">Silenciado</span>' : '') +
+        '</div>' +
+        '<p class="feedback-mensaje">' + f.mensaje + '</p>' +
+        '<div class="feedback-acciones">' +
+          '<select class="rol-select select-estado"></select>' +
+          '<button class="accion btn-leido">' + (f.leido ? 'Marcar no leído' : 'Marcar leído') + '</button>' +
+          '<button class="accion btn-silenciar">' + (f.usuario_silenciado ? 'Dejar de silenciar' : 'Silenciar este usuario') + '</button>' +
+        '</div>' +
+        '<textarea class="feedback-nota" placeholder="Nota interna (ej. referencia a una mejora del backlog)...">' + (f.nota_admin || '') + '</textarea>';
+
+      const selectEstado = card.querySelector('.select-estado');
+      selectEstado.innerHTML = opcionesEstado;
+      selectEstado.onchange = () => actualizarFeedback(f.id_feedback, { estado: selectEstado.value, leido: true });
+
+      card.querySelector('.btn-leido').onclick = () => actualizarFeedback(f.id_feedback, { leido: !f.leido });
+      card.querySelector('.btn-silenciar').onclick = () => silenciarUsuarioFeedback(f.id_usuario, !f.usuario_silenciado);
+
+      const textareaNota = card.querySelector('.feedback-nota');
+      textareaNota.onblur = () => {
+        if (textareaNota.value !== (f.nota_admin || '')) {
+          actualizarFeedback(f.id_feedback, { nota_admin: textareaNota.value }, true);
+        }
+      };
+
+      cont.appendChild(card);
+    });
+  }
+
+  // silencioso = true evita repintar toda la lista (para no perder el foco al escribir la nota)
+  function actualizarFeedback(idFeedback, cambios, silencioso) {
+    llamar('actualizarFeedback', Object.assign({ id_feedback: idFeedback }, cambios)).then(data => {
+      if (data.ok) {
+        const item = feedbackData.find(f => f.id_feedback === idFeedback);
+        if (item) Object.assign(item, cambios);
+        document.getElementById('conteo-feedback').textContent = feedbackData.filter(f => !f.leido).length;
+        if (!silencioso) pintarFeedback();
+        else mostrarToast('Nota guardada');
+      } else {
+        mostrarToast(data.error || 'No se pudo actualizar');
+      }
+    });
+  }
+
+  function silenciarUsuarioFeedback(idUsuario, silenciado) {
+    llamar('silenciarUsuarioFeedback', { id_usuario: idUsuario, silenciado: silenciado }).then(data => {
+      if (data.ok) {
+        feedbackData.filter(f => f.id_usuario === idUsuario).forEach(f => f.usuario_silenciado = silenciado);
+        mostrarToast(silenciado ? 'Usuario silenciado' : 'Usuario ya no está silenciado');
+        pintarFeedback();
+      } else {
+        mostrarToast(data.error || 'No se pudo actualizar');
+      }
     });
   }
 
