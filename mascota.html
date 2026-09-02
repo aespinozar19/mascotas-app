@@ -359,12 +359,14 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // ===================== CONFIG =====================
   const API_URL = 'https://script.google.com/macros/s/AKfycbxCLdntDxCPLNKEUpij7aIG7OZK3UnAnsCV1FR0Uq-CbO3j1ms0zMEHJeQwBeteRfKu4g/exec';
+  const GOOGLE_CLIENT_ID = '891168012188-rlv06omnpf60gus1j69v582emeq109pp.apps.googleusercontent.com';
   // ====================================================
 
-  const idToken = localStorage.getItem('idToken');
+  let idToken = localStorage.getItem('idToken');
   const idMascota = new URLSearchParams(window.location.search).get('id');
   let catalogo = [];
   let catalogoCampos = [];
@@ -373,16 +375,88 @@
   if (!idToken || !idMascota) {
     window.location.href = 'app.html';
   } else {
+    iniciarRenovacionSesion();
     init();
   }
 
+  // ===================== RENOVACIÓN SILENCIOSA DE SESIÓN =====================
+  // El idToken de Google expira ~1 hora después de emitido. Antes de cada
+  // llamada al backend se revisa si el token está vencido y, si es así, se
+  // intenta renovar en silencio primero (cubre tanto dejar la pestaña abierta
+  // muchas horas como volver a abrir la página días después).
+  let gisInicializado = false;
+  let resolverRenovacion = null;
+
+  function expiracionToken(token) {
+    try {
+      const payloadToken = JSON.parse(atob(token.split('.')[1]));
+      return payloadToken.exp * 1000; // exp viene en segundos, Date.now() en ms
+    } catch (e) {
+      return 0;
+    }
+  }
+  function tokenVencidoOAPuntoDeVencer(token, margenMs) {
+    return expiracionToken(token) - Date.now() < (margenMs || 0);
+  }
+  function onTokenRenovado(respuesta) {
+    idToken = respuesta.credential;
+    localStorage.setItem('idToken', idToken);
+    if (resolverRenovacion) { const r = resolverRenovacion; resolverRenovacion = null; r(true); }
+  }
+  function esperarGIS(maxEsperaMs) {
+    return new Promise(resolve => {
+      const inicio = Date.now();
+      (function verificar() {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) return resolve(true);
+        if (Date.now() - inicio > maxEsperaMs) return resolve(false);
+        setTimeout(verificar, 100);
+      })();
+    });
+  }
+  function asegurarGISInicializado() {
+    return esperarGIS(3000).then(listo => {
+      if (listo && !gisInicializado) {
+        google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onTokenRenovado, auto_select: true });
+        gisInicializado = true;
+      }
+      return gisInicializado;
+    });
+  }
+  function intentarRenovarToken() {
+    return asegurarGISInicializado().then(listo => {
+      if (!listo) return false;
+      return new Promise(resolve => {
+        let resuelto = false;
+        resolverRenovacion = () => { if (!resuelto) { resuelto = true; resolve(true); } };
+        google.accounts.id.prompt(notificacion => {
+          const fallo = (notificacion.isNotDisplayed && notificacion.isNotDisplayed()) ||
+                        (notificacion.isSkippedMoment && notificacion.isSkippedMoment());
+          if (fallo && !resuelto) { resuelto = true; resolverRenovacion = null; resolve(false); }
+        });
+        setTimeout(() => { if (!resuelto) { resuelto = true; resolverRenovacion = null; resolve(false); } }, 4000);
+      });
+    });
+  }
+  function iniciarRenovacionSesion() {
+    asegurarGISInicializado();
+    setInterval(() => {
+      if (tokenVencidoOAPuntoDeVencer(idToken, 10 * 60 * 1000)) intentarRenovarToken();
+    }, 5 * 60 * 1000);
+  }
+
   function llamar(action, extraParams, payload, publico) {
-    let url = API_URL + '?action=' + action;
-    if (!publico) url += '&idToken=' + encodeURIComponent(idToken);
-    if (extraParams) Object.keys(extraParams).forEach(k => { if (extraParams[k]) url += '&' + k + '=' + encodeURIComponent(extraParams[k]); });
-    if (payload) url += '&payload=' + encodeURIComponent(JSON.stringify(payload));
-    return fetch(url).then(r => r.json()).then(data => {
-      if (!data.ok && data.estado) cerrarSesion();
+    const hacerRequest = () => {
+      let url = API_URL + '?action=' + action;
+      if (!publico) url += '&idToken=' + encodeURIComponent(idToken);
+      if (extraParams) Object.keys(extraParams).forEach(k => { if (extraParams[k]) url += '&' + k + '=' + encodeURIComponent(extraParams[k]); });
+      if (payload) url += '&payload=' + encodeURIComponent(JSON.stringify(payload));
+      return fetch(url).then(r => r.json());
+    };
+    const necesitaRenovarPrimero = !publico && tokenVencidoOAPuntoDeVencer(idToken);
+    const previo = necesitaRenovarPrimero ? intentarRenovarToken() : Promise.resolve(true);
+
+    return previo.then(hacerRequest).then(data => {
+      if (!data.ok && (data.estado || data.error === 'Token inválido')) cerrarSesion();
       return data;
     });
   }
