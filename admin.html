@@ -197,6 +197,16 @@
   </div>
 
   <div class="vista" id="vista-limites">
+    <div class="fila" style="align-items: center; flex-wrap: wrap;">
+      <div class="info">
+        <p class="nombre">Función de compartir mascotas</p>
+        <p class="email">Permite a los dueños invitar a otras personas a sus mascotas.</p>
+      </div>
+      <label class="feedback-check" style="font-size: 14px;">
+        <input type="checkbox" id="input-compartir-habilitado" onchange="guardarCompartirHabilitado()">
+        Habilitada
+      </label>
+    </div>
     <div class="fila" style="align-items: flex-end; flex-wrap: wrap;">
       <div class="info">
         <p class="nombre">Límite por defecto</p>
@@ -473,6 +483,7 @@
         return;
       }
       document.getElementById('input-limite-default').value = data.limite_default;
+      document.getElementById('input-compartir-habilitado').checked = data.compartir_habilitado;
 
       const cont = document.getElementById('lista-limites');
       if (data.usuarios.length === 0) {
@@ -511,6 +522,14 @@
         }
         cargarLimites();
       }
+    });
+  }
+
+  function guardarCompartirHabilitado() {
+    const habilitado = document.getElementById('input-compartir-habilitado').checked;
+    llamar('actualizarCompartirHabilitado', { habilitado: habilitado }).then(data => {
+      if (data.ok) mostrarToast(habilitado ? 'Función de compartir habilitada' : 'Función de compartir deshabilitada');
+      else { mostrarToast(data.error || 'No se pudo actualizar'); cargarLimites(); }
     });
   }
 
