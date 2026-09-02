@@ -76,6 +76,7 @@
 
   .card-mascota p.nombre { margin: 0 0 2px; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; }
   .card-mascota p.detalle { margin: 0; font-size: 13px; color: var(--ink-muted); }
+  .card-mascota p.detalle-compartida { margin: 4px 0 0; font-size: 11px; color: var(--accent); font-weight: 500; }
 
   .punto-alerta {
     position: absolute; top: 18px; right: 18px;
@@ -468,7 +469,8 @@
   function cargarMascotas() {
     llamar('getMascotas').then(data => {
       if (!Array.isArray(data)) return;
-      totalMascotas = data.length;
+      const misPropias = data.filter(m => m.es_propia);
+      totalMascotas = misPropias.length;
       const grid = document.getElementById('grid-mascotas');
       grid.innerHTML = '';
 
@@ -482,13 +484,14 @@
           card.innerHTML =
             '<div class="icono-mascota"><svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="7" cy="8" rx="2" ry="2.6"/><ellipse cx="12.5" cy="5.7" rx="2" ry="2.6"/><ellipse cx="17.7" cy="8" rx="2" ry="2.6"/><ellipse cx="19.6" cy="13" rx="2" ry="2.6"/><path d="M12.5 12c-3 0-6.2 2.4-6.2 5.6 0 1.7 1.4 2.9 3.1 2.6 1.1-.2 2-.5 3.1-.5s2 .3 3.1.5c1.7.3 3.1-.9 3.1-2.6 0-3.2-3.2-5.6-6.2-5.6z"/></svg></div>' +
             '<p class="nombre">' + m.nombre + '</p>' +
-            '<p class="detalle">' + nombreTipo(m.tipo) + (m.raza ? ' · ' + m.raza : '') + '</p>';
+            '<p class="detalle">' + nombreTipo(m.tipo) + (m.raza ? ' · ' + m.raza : '') + '</p>' +
+            (m.es_propia ? '' : '<p class="detalle-compartida">Compartida por ' + (m.nombre_dueno || 'otro usuario') + (m.rol_compartido ? ' · ' + m.rol_compartido : '') + '</p>');
           card.onclick = () => window.location.href = 'mascota.html?id=' + m.id_mascota;
           grid.appendChild(card);
         });
       }
 
-      if (data.length < limiteMascotas) {
+      if (misPropias.length < limiteMascotas) {
         const btnAgregar = document.createElement('button');
         btnAgregar.className = 'card-agregar';
         btnAgregar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar mascota';
@@ -496,7 +499,7 @@
         grid.appendChild(btnAgregar);
         document.getElementById('nota-limite').style.display = 'none';
       } else {
-        document.getElementById('nota-limite').textContent = 'Ya registraste el máximo de ' + limiteMascotas + ' mascotas.';
+        document.getElementById('nota-limite').textContent = 'Ya registraste el máximo de ' + limiteMascotas + ' mascotas propias.';
         document.getElementById('nota-limite').style.display = 'block';
       }
 
