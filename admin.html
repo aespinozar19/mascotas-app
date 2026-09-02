@@ -160,6 +160,9 @@
     <button class="tab" id="tab-activos" onclick="cambiarTab('activos')">
       Usuarios<span class="conteo" id="conteo-activos">0</span>
     </button>
+    <button class="tab" id="tab-limites" onclick="cambiarTab('limites')">
+      Límites
+    </button>
   </div>
 
   <div class="vista activa" id="vista-pendientes">
@@ -168,6 +171,18 @@
 
   <div class="vista" id="vista-activos">
     <div id="lista-activos" class="carga">Cargando...</div>
+  </div>
+
+  <div class="vista" id="vista-limites">
+    <div class="fila" style="align-items: flex-end; flex-wrap: wrap;">
+      <div class="info">
+        <p class="nombre">Límite por defecto</p>
+        <p class="email">Aplica a todos los usuarios sin un límite propio.</p>
+      </div>
+      <input type="number" min="1" id="input-limite-default" class="rol-select" style="width: 70px;">
+      <button class="accion aprobar" onclick="guardarLimiteDefault()">Guardar</button>
+    </div>
+    <div id="lista-limites" class="carga">Cargando...</div>
   </div>
 </main>
 
@@ -187,6 +202,7 @@
     document.getElementById('nombre-admin').textContent = usuarioLocal ? usuarioLocal.nombre : '';
     cargarPendientes();
     cargarActivos();
+    cargarLimites();
   }
 
   function iniciales(nombre) {
@@ -323,6 +339,64 @@
     llamar('cambiarRol', { email, rol: nuevoRol }).then(data => {
       if (data.ok) mostrarToast('Rol actualizado');
       else { mostrarToast(data.error || 'No se pudo cambiar el rol'); cargarActivos(); }
+    });
+  }
+
+  // ===================== LÍMITES DE MASCOTAS (MEJORA-010) =====================
+  function cargarLimites() {
+    llamar('getConfiguracionLimites').then(data => {
+      if (!data.ok) {
+        document.getElementById('lista-limites').innerHTML =
+          '<div class="vacio">No se pudo cargar: ' + (data.error || 'error desconocido') + '</div>';
+        return;
+      }
+      document.getElementById('input-limite-default').value = data.limite_default;
+
+      const cont = document.getElementById('lista-limites');
+      if (data.usuarios.length === 0) {
+        cont.innerHTML = '<div class="vacio">No hay usuarios todavía.</div>';
+        return;
+      }
+      cont.innerHTML = '';
+      data.usuarios.forEach(u => {
+        const fila = document.createElement('div');
+        fila.className = 'fila';
+        fila.innerHTML =
+          '<div class="avatar">' + iniciales(u.nombre) + '</div>' +
+          '<div class="info"><p class="nombre">' + (u.nombre || 'Sin nombre') + '</p>' +
+          '<p class="email">' + u.mascotas_actuales + ' de ' + u.limite_efectivo + ' mascotas' +
+          (u.override === null ? ' (usa el límite por defecto)' : ' (límite propio)') + '</p></div>' +
+          '<div class="acciones">' +
+            '<input type="number" min="1" class="rol-select" style="width: 60px;" placeholder="def." value="' + (u.override === null ? '' : u.override) + '">' +
+            '<button class="accion aprobar">Guardar</button>' +
+          '</div>';
+        const input = fila.querySelector('input');
+        fila.querySelector('.aprobar').onclick = () => guardarLimiteUsuario(u.id_usuario, input.value);
+        cont.appendChild(fila);
+      });
+    });
+  }
+
+  function guardarLimiteDefault() {
+    const nuevoValor = Number(document.getElementById('input-limite-default').value);
+    llamar('actualizarLimiteDefault', { nuevo_valor: nuevoValor }).then(data => {
+      if (data.ok) { mostrarToast('Límite por defecto actualizado'); cargarLimites(); }
+      else {
+        mostrarToast(data.error || 'No se pudo actualizar');
+        if (data.usuarios_afectados) {
+          alert('Usuarios que quedarían sobre el límite:\n' +
+            data.usuarios_afectados.map(u => '- ' + u.nombre + ' (' + u.mascotas_actuales + ' mascotas)').join('\n'));
+        }
+        cargarLimites();
+      }
+    });
+  }
+
+  function guardarLimiteUsuario(idUsuario, valorInput) {
+    const nuevoValor = valorInput === '' ? null : Number(valorInput);
+    llamar('actualizarLimiteUsuario', { id_usuario: idUsuario, nuevo_valor: nuevoValor }).then(data => {
+      if (data.ok) { mostrarToast('Límite actualizado'); cargarLimites(); }
+      else { mostrarToast(data.error || 'No se pudo actualizar'); cargarLimites(); }
     });
   }
 
