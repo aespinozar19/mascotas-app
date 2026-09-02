@@ -180,7 +180,7 @@
     <div class="carga">Cargando tus mascotas...</div>
   </div>
 
-  <p class="limite-nota" id="nota-limite" style="display:none;">Ya registraste el máximo de 3 mascotas.</p>
+  <p class="limite-nota" id="nota-limite" style="display:none;">Ya registraste el máximo de mascotas.</p>
 </main>
 
 <div class="modal-fondo" id="modal-fondo">
@@ -242,7 +242,7 @@
       document.getElementById('link-admin').style.display = 'inline';
     }
     cargarCatalogo();
-    cargarMascotas();
+    cargarPerfil().then(cargarMascotas);
     cargarAlertas();
   }
 
@@ -316,6 +316,13 @@
   }
 
   let totalMascotas = 0;
+  let limiteMascotas = 3; // se sobreescribe con el valor real al cargar el perfil
+
+  function cargarPerfil() {
+    return llamar('getMiPerfil').then(data => {
+      if (data.ok) limiteMascotas = data.limite_mascotas;
+    });
+  }
 
   function cargarMascotas() {
     llamar('getMascotas').then(data => {
@@ -340,7 +347,7 @@
         });
       }
 
-      if (data.length < 3) {
+      if (data.length < limiteMascotas) {
         const btnAgregar = document.createElement('button');
         btnAgregar.className = 'card-agregar';
         btnAgregar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar mascota';
@@ -348,6 +355,7 @@
         grid.appendChild(btnAgregar);
         document.getElementById('nota-limite').style.display = 'none';
       } else {
+        document.getElementById('nota-limite').textContent = 'Ya registraste el máximo de ' + limiteMascotas + ' mascotas.';
         document.getElementById('nota-limite').style.display = 'block';
       }
 
