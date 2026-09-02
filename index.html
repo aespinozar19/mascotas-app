@@ -252,8 +252,10 @@
   window.onload = function () {
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: manejarRespuestaGoogle,
-      auto_select: true
+      callback: manejarRespuestaGoogle
+      // Sin auto_select: con él, Google podía disparar el login automáticamente
+      // AL MISMO TIEMPO que procesarLogin(idTokenGuardado) de abajo, mandando dos
+      // peticiones de login simultáneas al backend y chocando por el candado.
     });
 
     // Ancho del botón responsive: se ajusta al espacio real disponible en el card,
@@ -293,12 +295,19 @@
     return expiracionToken(token) - Date.now() < 0;
   }
 
+  // Guardia extra: nunca dejar dos llamadas de login en vuelo al mismo tiempo,
+  // pase lo que pase (botón + prompt silencioso + reintentar, etc.)
+  let loginEnCurso = false;
+
   function manejarRespuestaGoogle(respuesta) {
     localStorage.setItem('idToken', respuesta.credential);
     procesarLogin(respuesta.credential);
   }
 
   function procesarLogin(idToken) {
+    if (loginEnCurso) return; // ya hay una petición de login en vuelo, no mandes otra
+    loginEnCurso = true;
+
     document.getElementById('spinner-login').style.display = 'block';
     document.getElementById('error-login').style.display = 'none';
 
@@ -307,10 +316,16 @@
     fetch(url)
       .then(r => r.json())
       .then(data => {
+        loginEnCurso = false;
         document.getElementById('spinner-login').style.display = 'none';
 
         if (!data.ok) {
-          localStorage.removeItem('idToken');
+          // Solo borramos el token si el problema es el token en sí (inválido/expirado).
+          // Si es un error transitorio del servidor (ej. "sistema ocupado"), lo conservamos
+          // para que el usuario pueda reintentar sin tener que volver a tocar el botón de Google.
+          if (data.error !== 'El sistema está ocupado, intenta de nuevo en unos segundos') {
+            localStorage.removeItem('idToken');
+          }
           mostrarError(data.error || 'No se pudo iniciar sesión.');
           return;
         }
@@ -331,6 +346,7 @@
         }
       })
       .catch(() => {
+        loginEnCurso = false;
         document.getElementById('spinner-login').style.display = 'none';
         mostrarError('No se pudo conectar con el servidor. Intenta de nuevo.');
       });
