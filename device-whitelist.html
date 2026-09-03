@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validación de Dispositivo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  h1 { font-size: 1.3rem; margin-bottom: 8px; }
+  .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 24px; }
+  .status {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .status.ok { background: #14532d; color: #86efac; }
+  .status.fail { background: #7f1d1d; color: #fca5a5; }
+  .status.loading { background: #1e3a5f; color: #93c5fd; }
+  .info-box {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #1e293b;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: #94a3b8; }
+  .info-value {
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    text-align: right;
+    max-width: 60%;
+  }
+  #content { display: none; }
+  #content.visible { display: block; }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  button:hover { background: #2563eb; }
+  .copy-hint { font-size: 0.75rem; color: #64748b; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🔐 Validación de Dispositivo</h1>
+  <p class="subtitle">Filtrado por lista blanca (fingerprint + ID persistente)</p>
+
+  <div id="statusBox" class="status loading">Verificando dispositivo...</div>
+
+  <div class="info-box">
+    <div class="info-row">
+      <span class="info-label">Device ID (localStorage)</span>
+      <span class="info-value" id="deviceIdOut">—</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Fingerprint (SHA-256)</span>
+      <span class="info-value" id="fingerprintOut">—</span>
+    </div>
+  </div>
+
+  <button onclick="copiarInfo()">📋 Copiar IDs para agregar a whitelist</button>
+  <p class="copy-hint">Comparte estos valores con el admin para autorizar este equipo</p>
+
+  <div id="content" class="visible" style="margin-top:20px;">
+    <!-- Contenido protegido de ejemplo -->
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // CONFIGURACIÓN: agrega aquí los IDs autorizados
+  // ==========================================
+  const WHITELIST_DEVICE_IDS = [
+    // "a1b2c3d4-uuid-ejemplo-1"
+  ];
+  const WHITELIST_FINGERPRINTS = [
+    // "hash-sha256-ejemplo..."
+  ];
+
+  // ==========================================
+  // 1. ID persistente en localStorage
+  // ==========================================
+  function obtenerDeviceId() {
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem('device_id', deviceId);
+    }
+    return deviceId;
+  }
+
+  // ==========================================
+  // 2. Fingerprint basado en características del navegador
+  // ==========================================
+  async function generarFingerprint() {
+    const datos = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      screen.colorDepth,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.hardwareConcurrency || 'na'
+    ].join('|');
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(datos);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ==========================================
+  // 3. Validación combinada
+  // ==========================================
+  async function validarAcceso() {
+    const deviceId = obtenerDeviceId();
+    const fingerprint = await generarFingerprint();
+
+    document.getElementById('deviceIdOut').textContent = deviceId;
+    document.getElementById('fingerprintOut').textContent = fingerprint.substring(0, 24) + '...';
+
+    const autorizado =
+      WHITELIST_DEVICE_IDS.includes(deviceId) ||
+      WHITELIST_FINGERPRINTS.includes(fingerprint);
+
+    const statusBox = document.getElementById('statusBox');
+    if (autorizado) {
+      statusBox.className = 'status ok';
+      statusBox.textContent = '✅ Dispositivo autorizado';
+    } else {
+      statusBox.className = 'status fail';
+      statusBox.textContent = '⛔ Dispositivo NO autorizado';
+    }
+
+    return { autorizado, deviceId, fingerprint };
+  }
+
+  function copiarInfo() {
+    const deviceId = document.getElementById('deviceIdOut').textContent;
+    const texto = `Device ID: ${deviceId}`;
+    navigator.clipboard.writeText(texto).then(() => {
+      alert('Copiado al portapapeles:\n' + texto);
+    });
+  }
+
+  // Ejecutar validación al cargar
+  validarAcceso();
+</script>
+
+</body>
+</html>
